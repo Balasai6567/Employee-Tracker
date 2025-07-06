@@ -1,0 +1,321 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Employee Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="loadingOverlay.css">
+</head>
+<body>
+    <div id="loadingOverlay" style="display:none;">
+        <div><span class="loading"></span><span id="loadingMessage">Loading...</span></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ Construction Management System</h1>
+            <p>Advanced Employee Assignment & Reporting</p>
+            <div id="connectionStatus" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;">
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span id="statusText"></span>
+                <button onclick="testManualConnection()" style="margin-left: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: #fff; cursor: pointer;">🔄 Test Connection</button>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab(event, 'employee-entry')">👤 Employee Entry</button>
+            <button class="nav-tab" onclick="showTab(event, 'admin-panel')">⚙️ Admin Panel</button>
+            <button class="nav-tab" onclick="showTab(event, 'assignment-board')">📋 Assignment Board</button>
+            <button class="nav-tab" onclick="showTab(event, 'reports')">📊 Reports</button>
+        </div>
+
+        <!-- Employee Entry Tab -->
+        <div id="employee-entry" class="tab-content active">
+            <h2>👤 Employee Master Entry</h2>
+            <form id="employeeForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="employeeName">Employee Name *</label>
+                        <input type="text" id="employeeName" name="employeeName" required minlength="2" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="designation">Designation *</label>
+                        <select id="designation" name="designation" required>
+                            <option value="">Select Designation</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Employment Type *</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="ownCompany" name="employmentType" value="Own Company" required>
+                            <label for="ownCompany">Own Company</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="rental" name="employmentType" value="Rental" required>
+                            <label for="rental">Rental</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="machine">Machine/Vehicle</label>
+                        <select id="machine" name="machine">
+                            <option value="">Select Machine (Optional)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="workArea">Initial Work Area *</label>
+                        <select id="workArea" name="workArea" required>
+                            <option value="">Select Work Area</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number *</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber" pattern="[0-9]{10}" required 
+                               placeholder="Enter 10-digit phone number">
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Additional Notes</label>
+                        <textarea id="notes" name="notes" rows="3" maxlength="500"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="btn-text">Add Employee</span>
+                    <span class="loading" style="display: none;"></span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Admin Panel Tab -->
+        <div id="admin-panel" class="tab-content">
+            <h2>⚙️ Admin Panel</h2>
+            
+            <div class="admin-section">
+                <h3>🔒 Admin Authentication</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="password" id="adminPin" placeholder="Enter Admin PIN" style="flex: 1;">
+                    <button class="btn btn-warning" onclick="authenticateAdmin()">Login</button>
+                </div>
+                <div id="adminStatus" style="margin-top: 10px;"></div>
+            </div>
+
+            <div id="adminControls" style="display: none;">
+                <div class="form-grid">
+                    <div class="admin-section">
+                        <h3>📝 Manage Designations</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="newDesignation" placeholder="Add new designation" maxlength="30">
+                            <button class="btn btn-success" onclick="addDropdownItem('designations', 'newDesignation')">Add</button>
+                        </div>
+                        <div id="designationsList"></div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>🚛 Manage Machines</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="newMachine" placeholder="Add new machine" maxlength="30">
+                            <button class="btn btn-success" onclick="addDropdownItem('machines', 'newMachine')">Add</button>
+                        </div>
+                        <div id="machinesList"></div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>📍 Manage Work Areas</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="newWorkArea" placeholder="Add new work area" maxlength="30">
+                            <button class="btn btn-success" onclick="addDropdownItem('workAreas', 'newWorkArea')">Add</button>
+                        </div>
+                        <div id="workAreasList"></div>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>👥 Employee Management</h3>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="loadEmployeeTable()">🔄 Refresh Employee List</button>
+                        <button class="btn btn-success" onclick="exportEmployeesToPDF()">📄 Export to PDF</button>
+                        <button class="btn btn-warning" onclick="exportEmployeesToExcel()">📊 Export to Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="employeeTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Designation</th>
+                                    <th>Type</th>
+                                    <th>Machine</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignment Board Tab -->
+        <div id="assignment-board" class="tab-content">
+            <h2>📋 Daily Assignment Board</h2>
+            
+            <div class="board-controls">
+                <div class="form-group">
+                    <label for="assignmentDate">Assignment Date:</label>
+                    <input type="date" id="assignmentDate" onchange="loadAssignmentBoard()">
+                </div>
+                <div class="last-selection-info" id="lastSelectionInfo">
+                    <small>Last selected: <span id="lastSelectedDate">None</span></small>
+                </div>
+                <div class="assignment-summary" id="assignmentSummary"></div>
+                <div class="board-actions">
+                    <button class="btn btn-primary" onclick="saveAllAssignments()">💾 Save Assignments</button>
+                    <button class="btn btn-success" onclick="loadAssignmentBoard()">🔄 Refresh Board</button>
+                    <button class="btn btn-info" onclick="exportAssignmentsToExcel()">📊 Export Excel</button>
+                    <button class="btn btn-danger" onclick="clearAssignmentsForDate()">🗑️ Clear Board</button>
+                </div>
+            </div>
+
+            <div id="unassignedEmployees" class="work-area-column" style="margin-bottom: 20px;">
+                <h3>👥 Available Employees <span id="availableCount">(0)</span></h3>
+                <div id="employeePool"></div>
+            </div>
+
+            <div id="assignmentBoard" class="assignment-board">
+                <!-- Work area columns will be populated here -->
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="reports" class="tab-content">
+            <h2>📊 Reports & Analytics</h2>
+            
+            <div class="filters-section">
+                <h3>🔍 Report Filters</h3>
+                <div class="filters-grid">
+                    <div class="form-group">
+                        <label for="reportType">Report Type:</label>
+                        <select id="reportType" onchange="updateReportType()">
+                            <option value="assignment">Assignment Reports</option>
+                            <option value="employee">Employee Reports</option>
+                            <option value="summary">Summary Reports</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="startDate">Start Date:</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate">End Date:</label>
+                        <input type="date" id="endDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="filterWorkArea">Work Area:</label>
+                        <select id="filterWorkArea">
+                            <option value="">All Work Areas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filterDesignation">Designation:</label>
+                        <select id="filterDesignation">
+                            <option value="">All Designations</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filterType">Employment Type:</label>
+                        <select id="filterType">
+                            <option value="">All Types</option>
+                            <option value="Own Company">Own Company</option>
+                            <option value="Rental">Rental</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="generateReport()">📊 Generate Report</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reportStats" class="stats-grid" style="display: none;">
+                <!-- Stats will be populated here -->
+            </div>
+
+            <div style="margin-bottom: 20px; display: none;" id="exportButtons">
+                <button class="btn btn-success" onclick="exportReportToExcel()">📊 Export to Excel</button>
+                <button class="btn btn-warning" onclick="exportReportToPDF()">📄 Export to PDF</button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="reportTable" style="display: none;">
+                    <thead>
+                        <tr id="reportTableHeader">
+                            <!-- Dynamic headers based on report type -->
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing employees -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>Edit Employee</h3>
+            <form id="editEmployeeForm">
+                <input type="hidden" id="editEmpId">
+                <div class="form-group">
+                    <label for="editEmpName">Name:</label>
+                    <input type="text" id="editEmpName" required minlength="2" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="editEmpDesignation">Designation:</label>
+                    <select id="editEmpDesignation" required>
+                        <option value="">Select Designation</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Employment Type:</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="editOwnCompany" name="editEmploymentType" value="Own Company" required>
+                            <label for="editOwnCompany">Own Company</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="editRental" name="editEmploymentType" value="Rental" required>
+                            <label for="editRental">Rental</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editEmpMachine">Machine/Vehicle:</label>
+                    <select id="editEmpMachine">
+                        <option value="">Select Machine (Optional)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editEmpPhone">Phone:</label>
+                    <input type="tel" id="editEmpPhone" pattern="[0-9]{10}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Employee</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
